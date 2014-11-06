@@ -81,13 +81,11 @@ void setup(){
   if (!Wido.begin())
   {
     Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
-    while(1){
-        digitalWrite(LED_PIN, HIGH);   // sets the LED on
-        delay(1000);
-        digitalWrite(LED_PIN, LOW);   // sets the LED off
-        delay(500);
-        softReset();
-    }
+    digitalWrite(LED_PIN, HIGH);   // sets the LED on
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);   // sets the LED off
+    delay(500);
+    softReset();
   }
 
   /* Attempt to connect to an access point */
@@ -101,13 +99,11 @@ void setup(){
    */
   if (!Wido.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
     Serial.println(F("Failed!"));
-    while(1){
-        digitalWrite(LED_PIN, HIGH);   // sets the LED on
-        delay(1000);
-        digitalWrite(LED_PIN, LOW);   // sets the LED off
-        delay(500);
-        softReset();
-    }
+    digitalWrite(LED_PIN, HIGH);   // sets the LED on
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);   // sets the LED off
+    delay(500);
+    softReset();
   }
   
   Serial.println(F("Connected!"));
@@ -126,6 +122,7 @@ unsigned int  BatteryVoltage = 0;
 unsigned int  OutACVoltage = 0;
 unsigned int  InACVoltage = 0;
 unsigned int  LOAD = 0;
+boolean Updata = false ;  //数据更新标志：=0无更新数据
 //float Temperature = 0;
 //float Humidity = 0;
 
@@ -135,6 +132,7 @@ void loop(){
   static unsigned long RetryMillis = 0;
   static unsigned long uploadtStamp = 0;
   static unsigned long sensortStamp = 0;
+  static unsigned long CnnectedStamp = 0;
 
   
   unsigned int IncominDataLength = 0;
@@ -145,8 +143,8 @@ void loop(){
   if((millis() - widoruntimeStamp) > 3600000){
     Serial.print(F("Time To Reset......"));
     Serial.println(millis());
-    while (1){
-    }
+    delay(1000);
+    softReset();
   }
 
   if(millis() - sensortStamp > 3000){    //DATA I/O SCAN
@@ -172,11 +170,14 @@ void loop(){
       InACVoltage += (unsigned char)(IncominBuffer[4]);
 
       LOAD = (unsigned char)(IncominBuffer[11]);
-      delay(500);
+      Updata = true ;
+      delay(100);
     }
     digitalWrite(LED_PIN, LOW);   // sets the LED off
   }
+  
   wdt_reset();   //看门狗复位
+  
   if(!WidoClient.connected() && (millis() - RetryMillis > TCP_TIMEOUT)){  
     // Update the time stamp
     RetryMillis = millis();
@@ -196,9 +197,23 @@ void loop(){
     Serial.println(F(""));
     // Connect to the Lewei50 Server
     WidoClient = Wido.connectTCP(ip, 80);          // Try to connect cloud server
+    if (WidoClient.connected()){
+      CnnectedStamp = millis();
+    }
+    if ((millis() - CnnectedStamp)>180000 ){
+      Serial.print(F("Time To Reset......"));
+      Serial.println(millis());
+      delay(1000);
+      softReset();
+    }
+  }
+  else{        //检查连接丢失是否超过了3分钟
+    WidoClient.close();      // Close the service connection
   }
   wdt_reset();   //看门狗复位
-  if(WidoClient.connected() && (millis() - uploadtStamp > 10000)){
+  
+  if(WidoClient.connected() && (millis() - uploadtStamp > 10000) && Updata ){
+    Updata = false;
     uploadtStamp = millis();
     // If the device is connected to the cloud server, upload the data every 10000ms.
     wdt_reset();   //看门狗复位
