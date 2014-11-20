@@ -16,13 +16,13 @@ This example code is used to connect the Lewei50 cloud service (Official homepag
 
  The device required is just:
  
- 1. LM35 low cost temperature sensor or any device you used to upload data
+ 1.
  2. And Wido
 
 Note: Please don't forget to change the setting below before using!
  1. WLAN_SSID & WlAN_PASS
- 2. API_key
- 3. device ID & sensor ID
+ 2. userkey
+ 3. GATE ID
 
  */
 
@@ -32,6 +32,7 @@ Note: Please don't forget to change the setting below before using!
 #include <SPI.h>
 #include <avr/wdt.h>
 //#include <SHT1x.h>
+//#include "utility/debug.h"
 
 #define Wido_IRQ   7
 #define Wido_VBAT  5
@@ -44,7 +45,7 @@ SPI_CLOCK_DIVIDER); // you can change this clock speed
 #define WLAN_SECURITY   WLAN_SEC_WPA2
 
 
-#define WLAN_SSID       "dy008MI-3C"           // cannot be longer than 32 characters!
+#define WLAN_SSID       "herunsun1"           // cannot be longer than 32 characters!
 #define WLAN_PASS       "qwertyuiop"          // For connecting router or AP, don't forget to set the SSID and password here!!
 
 
@@ -63,7 +64,7 @@ SPI_CLOCK_DIVIDER); // you can change this clock speed
 static unsigned long widoruntimeStamp = 0;
 
 void softReset(){
-asm volatile ("  jmp 0");
+asm volatile ("jmp 0");
 }
 
 void setup(){
@@ -87,7 +88,15 @@ void setup(){
     delay(500);
     softReset();
   }
-
+  for (byte i=0;i<10;i++){
+    digitalWrite(LED_PIN, HIGH);   // sets the LED on
+    delay(400);
+    digitalWrite(LED_PIN, LOW);   // sets the LED off
+    delay(200);
+  }
+  
+//  Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
+  
   /* Attempt to connect to an access point */
   char *ssid = WLAN_SSID;             /* Max 32 chars */
 //  Serial.print(F("\nAttempting to connect to ")); 
@@ -97,12 +106,14 @@ void setup(){
    By default connectToAP will retry indefinitely, however you can pass an
    optional maximum number of retries (greater than zero) as the fourth parameter.
    */
-  if (!Wido.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
-    Serial.println(F("Failed!"));
-    digitalWrite(LED_PIN, HIGH);   // sets the LED on
-    delay(1000);
-    digitalWrite(LED_PIN, LOW);   // sets the LED off
-    delay(500);
+  if (!Wido.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY,3)) {
+    Serial.println(F("Connect To AP Failed!"));
+      for (byte i=0;i<10;i++){
+      digitalWrite(LED_PIN, HIGH);   // sets the LED on
+      delay(100);
+      digitalWrite(LED_PIN, LOW);   // sets the LED off
+      delay(300);
+    }
     softReset();
   }
   
@@ -171,6 +182,9 @@ void loop(){
 
       LOAD = (unsigned char)(IncominBuffer[11]);
       Updata = true ;
+      delay(1000);
+    }
+    else{
       delay(100);
     }
     digitalWrite(LED_PIN, LOW);   // sets the LED off
