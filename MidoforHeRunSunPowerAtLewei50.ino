@@ -138,6 +138,7 @@ int  BatteryAmp = 0;
 unsigned int  LOAD = 0;
 unsigned int  UPState = 0;
 boolean Updata = false ;  //数据更新标志：=0无更新数据
+unsigned int ADConter = 0;
 //float Temperature = 0;
 //float Humidity = 0;
 
@@ -188,7 +189,7 @@ void loop(){
       
       // read the analog in value:
       BatteryAmp = analogRead(analogInPin);
-      
+      ADConter ++ ;
       Updata = true ;
     }
     Serial1.print("\x59\x0D");    //Poll UPS StateCommand
@@ -253,15 +254,16 @@ void loop(){
     itoa(OutACVoltage/10,OVChar,10);  // push the data to the http data package
     length += strlen(OVChar);
     
-    BatteryAmp = BatteryAmp -517;      // Zero Ponint cut
-    if (abs(BatteryAmp) < 6){
-      BatteryAmp = 0;
-    }
-    BatteryAmp = BatteryAmp * 2;    //0.02v = 1A
-    itoa(BatteryAmp/10,BIChar,10);  // push the data to the http data package
+    BatteryAmp = BatteryAmp / ADConter;
+    BatteryAmp = BatteryAmp -519;      // Zero Ponint calc
+    BatteryAmp = BatteryAmp * 24;    // convet to Amp 20mv = 1A
+    // push the data to the http data package
+    itoa(BatteryAmp/100,BIChar,10);    
     strcat(BIChar,".");
-    itoa(abs(BatteryAmp)%10,BIChar+strlen(BIChar),10);
+    itoa(abs(BatteryAmp/10)%10,BIChar+strlen(BIChar),10);
     length += strlen(BIChar);
+    BatteryAmp = 0 ;
+    ADConter = 0 ;
     
     itoa(LOAD/100,LAChar,10);  // push the data to the http data package
     strcat(LAChar,".");
