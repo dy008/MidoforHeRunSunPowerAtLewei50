@@ -55,13 +55,15 @@ SPI_CLOCK_DIVIDER); // you can change this clock speed
 #define WEBSITE  "www.lewei50.com"
 #define userkey  "dab6a862154c4ebfab05b845eb4b5652"  // Update Your API Key. To get your API Key, please check the link below
                                                      //https://www.lewei50.com/user/clientindex
-
+#define analogInPin  A0  // Analog input pin that the potentiometer is attached to
 // Specify data and clock connections and instantiate SHT1x object
 //#define dataPin  3
 //#define clockPin 2
 //SHT1x sht1x(dataPin, clockPin);
 
 static unsigned long widoruntimeStamp = 0;
+
+
 
 void softReset(){
 asm volatile ("jmp 0");
@@ -75,7 +77,7 @@ void setup(){
   digitalWrite(LED_PIN, LOW);   // sets the LED off
   Serial.begin(115200);    //USB ON Serial
   Serial1.setTimeout(3000);  //set Serial1 Timeout value=3000ms
-  Serial1.begin(38400);    //concet to UPS
+  Serial1.begin(19200);    //concet to UPS
   
   widoruntimeStamp = millis() ;
 
@@ -132,7 +134,9 @@ uint32_t ip = 0;
 unsigned int  BatteryVoltage = 0;
 unsigned int  OutACVoltage = 0;
 unsigned int  InACVoltage = 0;
+int  BatteryAmp = 0;
 unsigned int  LOAD = 0;
+unsigned int  UPState = 0;
 boolean Updata = false ;  //数据更新标志：=0无更新数据
 //float Temperature = 0;
 //float Humidity = 0;
@@ -167,7 +171,7 @@ void loop(){
     digitalWrite(LED_PIN, HIGH);   // sets the LED on
     Serial1.print("\x01\x10\x01\xEC");    //Poll UPS StateCommand
     IncominDataLength =Serial1.readBytes(IncominBuffer,14);
-    if  ((IncominDataLength > 0 ) && (IncominBuffer[0] == 1))  {
+    if  ((IncominDataLength == 14 ) && (IncominBuffer[0] == 1))  {
       BatteryVoltage = (unsigned char)(IncominBuffer[7]) ;
       BatteryVoltage <<= 8;
       BatteryVoltage += (unsigned char)(IncominBuffer[8]);
@@ -179,13 +183,18 @@ void loop(){
       InACVoltage = (unsigned char)(IncominBuffer[3]);
       InACVoltage <<= 8;
       InACVoltage += (unsigned char)(IncominBuffer[4]);
-
-      LOAD = (unsigned char)(IncominBuffer[11]);
+      
+      UPState  = (unsigned char)(IncominBuffer[2]) ;
+      
+      // read the analog in value:
+      BatteryAmp = analogRead(analogInPin);
+      
       Updata = true ;
-      delay(1000);
     }
-    else{
-      delay(100);
+    Serial1.print("\x59\x0D");    //Poll UPS StateCommand
+    IncominDataLength =Serial1.readBytes(IncominBuffer,8);
+    if  ((IncominDataLength == 8 ) && (IncominBuffer[7] == 0x0D))  {
+      LOAD = (unsigned char)(IncominBuffer[4]) * 6 ;  //(LOAD% * 6KW )
     }
     digitalWrite(LED_PIN, LOW);   // sets the LED off
   }
@@ -234,7 +243,7 @@ void loop(){
     // Prepare Http Package for Lewei50 & get length
     int length = 0;
     char lengthstr[4] = "";
-    char BVChar[6] = "",OVChar[4] ="",IVChar[4] ="",LAChar[4] ="";    
+    char BVChar[6] = "",OVChar[4] ="",BIChar[7] ="",LAChar[5] ="",USChar[4] ="";    
     
     itoa(BatteryVoltage/10,BVChar,10);  // push the data to the http data package
     strcat(BVChar,".");
@@ -244,11 +253,23 @@ void loop(){
     itoa(OutACVoltage/10,OVChar,10);  // push the data to the http data package
     length += strlen(OVChar);
     
-    itoa(InACVoltage/10,IVChar,10);  // push the data to the http data package
-    length += strlen(IVChar);
+    BatteryAmp = BatteryAmp -517;      // Zero Ponint cut
+    if (abs(BatteryAmp) < 6){
+      BatteryAmp = 0;
+    }
+    BatteryAmp = BatteryAmp * 2;    //0.02v = 1A
+    itoa(BatteryAmp/10,BIChar,10);  // push the data to the http data package
+    strcat(BIChar,".");
+    itoa(abs(BatteryAmp)%10,BIChar+strlen(BIChar),10);
+    length += strlen(BIChar);
     
-    itoa(LOAD,LAChar,10);  // push the data to the http data package
+    itoa(LOAD/100,LAChar,10);  // push the data to the http data package
+    strcat(LAChar,".");
+    itoa(LOAD%100,LAChar+strlen(LAChar),10);
     length += strlen(LAChar);
+    
+    itoa(UPState,USChar,10);  // push the data to the http data package
+    length += strlen(USChar);
     
     Serial.println(F("Connected to Lewei50 server."));
     // Send headers
@@ -267,7 +288,7 @@ void loop(){
     WidoClient.fastrprintln(userkey);
     Serial.print(F("."));
 
-    length += 101;                           // get the length of data package
+    length += 126;                           // get the length of data package
     itoa(length,lengthstr,10);               // convert int to char array for posting
     Serial.print(F("Length = "));
     Serial.println(length);
@@ -286,7 +307,8 @@ void loop(){
 *    {"Name":"BV","Value":"55.6"},
 *    {"Name":"OV","Value":"220"},
 *    {"Name":"IV","Value":"220"},
-*    {"Name":"LA","Value":"100"}
+*    {"Name":"LA","Value":"1.58"},
+*    {"Name":"SV","Value":"160"}
 *  ]
 ***************************************************************************************************/
     WidoClient.fastrprint(F("[{\"Name\":\"BV\",\"Value\":\""));
@@ -295,11 +317,14 @@ void loop(){
     WidoClient.fastrprint(F("\"},{\"Name\":\"OV\",\"Value\":\""));
     WidoClient.fastrprint(OVChar);  //25
     
-    WidoClient.fastrprint(F("\"},{\"Name\":\"IV\",\"Value\":\""));
-    WidoClient.fastrprint(IVChar);  //25
+    WidoClient.fastrprint(F("\"},{\"Name\":\"A1\",\"Value\":\""));
+    WidoClient.fastrprint(BIChar);  //25
     
     WidoClient.fastrprint(F("\"},{\"Name\":\"LA\",\"Value\":\""));
-    WidoClient.fastrprint(LAChar);
+    WidoClient.fastrprint(LAChar);    //25
+    
+    WidoClient.fastrprint(F("\"},{\"Name\":\"SV\",\"Value\":\""));
+    WidoClient.fastrprint(USChar);
     WidoClient.fastrprintln(F("\"}]"));    //28
         
 //    strcat(httpPackage,"{\"Name\":\"T1\",\"Value\":\"");
