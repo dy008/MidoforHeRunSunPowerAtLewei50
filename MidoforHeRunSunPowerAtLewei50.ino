@@ -132,10 +132,10 @@ void setup() {
 uint32_t ip = 0;
 unsigned int  BatteryVoltage = 0;
 unsigned int  OutACVoltage = 0;
-unsigned int  InACVoltage = 0;
+//unsigned int  InACVoltage = 0;
 int  BatteryAmp = 0;
 unsigned int  LOAD = 0;
-unsigned int  UPState = 0;
+//unsigned int  UPState = 0;
 boolean Updata = false ;  //数据更新标志：=0无更新数据
 unsigned int ADConter = 0;
 //float Temperature = 0;
@@ -180,11 +180,11 @@ void loop() {
       OutACVoltage <<= 8;
       OutACVoltage += (unsigned char)(IncominBuffer[6]);
 
-      InACVoltage = (unsigned char)(IncominBuffer[3]);
-      InACVoltage <<= 8;
-      InACVoltage += (unsigned char)(IncominBuffer[4]);
+      //InACVoltage = (unsigned char)(IncominBuffer[3]);
+      //InACVoltage <<= 8;
+      //InACVoltage += (unsigned char)(IncominBuffer[4]);
 
-      UPState  = (unsigned char)(IncominBuffer[2]) ;
+      //UPState  = (unsigned char)(IncominBuffer[2]) ;
 
       // read the analog in value:
       BatteryAmp = analogRead(analogInPin);
@@ -243,7 +243,7 @@ void loop() {
     // Prepare Http Package for Lewei50 & get length
     int length = 0;
     char lengthstr[4] = "";
-    char BVChar[6] = "", OVChar[4] = "", BIChar[7] = "", LAChar[5] = "", USChar[4] = "";
+    char BVChar[6] = "", OVChar[4] = "", BIChar[7] = "", LAChar[5] = ""; //USChar[4] = "";
 
     itoa(BatteryVoltage / 10, BVChar, 10); // push the data to the http data package
     strcat(BVChar, ".");
@@ -269,8 +269,8 @@ void loop() {
     itoa(LOAD % 100, LAChar + strlen(LAChar), 10);
     length += strlen(LAChar);
 
-    itoa(UPState, USChar, 10); // push the data to the http data package
-    length += strlen(USChar);
+    //itoa(UPState, USChar, 10); // push the data to the http data package
+    //length += strlen(USChar);
 
     Serial.println(F("Connected to Lewei50 server."));
     // Send headers
@@ -289,7 +289,7 @@ void loop() {
     WidoClient.fastrprintln(userkey);
     Serial.print(F("."));
 
-    length += 126;                           // get the length of data package
+    length += 101;                           // get the length of data package
     itoa(length, lengthstr, 10);             // convert int to char array for posting
     Serial.print(F("Length = "));
     Serial.println(length);
@@ -322,11 +322,12 @@ void loop() {
     WidoClient.fastrprint(BIChar);  //25
 
     WidoClient.fastrprint(F("\"},{\"Name\":\"LA\",\"Value\":\""));
-    WidoClient.fastrprint(LAChar);    //25
-
-    WidoClient.fastrprint(F("\"},{\"Name\":\"SV\",\"Value\":\""));
-    WidoClient.fastrprint(USChar);
+    WidoClient.fastrprint(LAChar);    
     WidoClient.fastrprintln(F("\"}]"));    //28
+    
+    //WidoClient.fastrprint(F("\"},{\"Name\":\"SV\",\"Value\":\""));
+    //WidoClient.fastrprint(USChar);
+    //WidoClient.fastrprintln(F("\"}]"));    //28
 
     //    strcat(httpPackage,"{\"Name\":\"T1\",\"Value\":\"");
     //    dtostrf(Temperature,5,2,httpPackage+strlen(httpPackage));
