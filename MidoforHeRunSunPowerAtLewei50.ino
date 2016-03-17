@@ -13,17 +13,13 @@
 
 /*
 This example code is used to connect the Lewei50 cloud service (Official homepage: www.lewei50.com).
-
  The device required is just:
-
  1.
  2. And Wido
-
 Note: Please don't forget to change the setting below before using!
  1. WLAN_SSID & WlAN_PASS
  2. userkey
  3. GATE ID
-
  */
 
 
@@ -187,7 +183,7 @@ void loop() {
       //UPState  = (unsigned char)(IncominBuffer[2]) ;
 
       // read the analog in value:
-      BatteryAmp = analogRead(analogInPin);
+      BatteryAmp += analogRead(analogInPin);
       ADConter ++ ;
       Updata = true ;
     }
@@ -235,10 +231,10 @@ void loop() {
   }
   wdt_reset();   //看门狗复位
 
-  if (WidoClient.connected() && (millis() - uploadtStamp > 10000) && Updata ) {
+  if (WidoClient.connected() && (millis() - uploadtStamp > 30000) && Updata ) {
     Updata = false;
     uploadtStamp = millis();
-    // If the device is connected to the cloud server, upload the data every 10000ms.
+    // If the device is connected to the cloud server, upload the data every 30s.
     wdt_reset();   //看门狗复位
     // Prepare Http Package for Lewei50 & get length
     int length = 0;
@@ -369,6 +365,3 @@ void loop() {
   }
 
 }
-
-
-
